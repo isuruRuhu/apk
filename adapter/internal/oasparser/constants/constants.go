@@ -17,11 +17,12 @@
 
 package constants
 
-// sub-property keys mentioned under x-wso2-production-endpoints
+// endpoint related constants
 const (
 	Urls                  string = "urls"
 	Type                  string = "type"
 	HTTP                  string = "http"
+	HTTPS                 string = "https"
 	LoadBalance           string = "load_balance"
 	FailOver              string = "failover"
 	AdvanceEndpointConfig string = "advanceEndpointConfig"
@@ -30,12 +31,7 @@ const (
 
 // Constants for OpenAPI vendor extension keys and values
 const (
-	XWso2ProdEndpoints                string = "x-wso2-production-endpoints"
-	XWso2SandbxEndpoints              string = "x-wso2-sandbox-endpoints"
-	XWso2endpoints                    string = "x-wso2-endpoints"
 	XWso2BasePath                     string = "x-wso2-basePath"
-	XWso2Label                        string = "x-wso2-label"
-	XWso2Cors                         string = "x-wso2-cors"
 	XWso2HTTP2BackendEnabled          string = "x-wso2-http2-backend-enabled"
 	XThrottlingTier                   string = "x-throttling-tier"
 	XWso2ThrottlingTier               string = "x-wso2-throttling-tier"
@@ -48,13 +44,6 @@ const (
 	XScopes                           string = "x-scopes"
 	XWso2PassRequestPayloadToEnforcer string = "x-wso2-pass-request-payload-to-enforcer"
 	XUriMapping                       string = "x-uri-mapping"
-)
-
-// cluster name prefixes
-const (
-	SandClustersConfigNamePrefix    string = "clusterSand"
-	ProdClustersConfigNamePrefix    string = "clusterProd"
-	XWso2EPClustersConfigNamePrefix string = "xwso2cluster"
 )
 
 // sub-property values and keys relevant for x-wso2-application security extension
@@ -112,8 +101,7 @@ const (
 
 // API Type Constants
 const (
-	//todo(amali) change to REST
-	REST                  string = "HTTP"
+	REST                  string = "REST"
 	SOAP                  string = "SOAP"
 	WS                    string = "WS"
 	GRAPHQL               string = "GRAPHQL"
@@ -146,4 +134,6 @@ const (
 // CRD Kinds
 const (
 	KindAuthentication = "Authentication"
+	KindAPIPolicy      = "APIPolicy"
+	KindScope          = "Scope"
 )

@@ -8,7 +8,7 @@ public final string[] WEBSUB_SUPPORTED_METHODS = ["subscribe"];
 public final string[] SSE_SUPPORTED_METHODS = ["subscribe"];
 public final string[] WS_SUPPORTED_METHODS = ["subscribe", "publish"];
 
-const string API_TYPE_HTTP = "HTTP";
+const string API_TYPE_REST = "REST";
 const string API_TYPE_SOAP = "SOAP";
 const string API_TYPE_SSE = "SSE";
 const string API_TYPE_WS = "WS";
@@ -31,3 +31,6 @@ const string PRODUCTION_TYPE = "production";
 const string SANDBOX_TYPE = "sandbox";
 const string PRIMARY_ENDPOINT = "primary";
 const string ZIP_FILE_EXTENSTION = ".zip";
+const string PROTOCOL_HTTP = "http";
+const string PROTOCOL_HTTPS = "https";
+isolated string[] ALLOWED_API_TYPES = [API_TYPE_REST];

@@ -33,6 +33,7 @@ const (
 	httpConManagerStartPrefix  string = "ingress_http"
 	extAuthzPerRouteName       string = "type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute"
 	luaPerRouteName            string = "type.googleapis.com/envoy.extensions.filters.http.lua.v3.LuaPerRoute"
+	corsFilterName             string = "type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors"
 	mgwWebSocketFilterName     string = "envoy.filters.http.mgw_websocket"
 	mgwWebSocketWASMFilterName string = "envoy.filters.http.mgw_WASM_websocket"
 	mgwWASMVmID                string = "mgw_WASM_vm"
@@ -50,9 +51,8 @@ const (
 	defaultListenerSecretConfigName string = "DefaultListenerSecret"
 )
 
-//cluster prefixes
+// cluster prefixes
 const (
-	xWso2EPClustersConfigNamePrefix     string = "xwso2cluster"
 	requestInterceptClustersNamePrefix  string = "reqInterceptor"
 	responseInterceptClustersNamePrefix string = "resInterceptor"
 )
@@ -67,16 +67,13 @@ const (
 	methodContextExtension          string = "method"
 	apiVersionContextExtension      string = "version"
 	apiNameContextExtension         string = "name"
-	prodClusterNameContextExtension string = "prodClusterName"
-	sandClusterNameContextExtension string = "sandClusterName"
+	clusterNameContextExtension     string = "clusterName"
 	retryPolicyRetriableStatusCodes string = "retriable-status-codes"
 )
 
 const (
 	// clusterHeaderName denotes the constant used for header based routing decisions.
 	clusterHeaderName string = "x-wso2-cluster-header"
-	// upstreamServiceTimeHeader the header which is used to denote the upstream service time
-	upstreamServiceTimeHeader string = "x-envoy-upstream-service-time"
 	// xWso2requestInterceptor used to provide request interceptor details for api and resource level
 	xWso2requestInterceptor string = "x-wso2-request-interceptor"
 	// xWso2responseInterceptor used to provide response interceptor details for api and resource level
@@ -136,4 +133,10 @@ const (
 // metadata keys
 const (
 	methodRewrite = "method-rewrite"
+)
+
+// Enforcer
+const (
+	choreoConnectEnforcerReply = "choreo-connect-enforcer-reply"
+	uaexCode                   = "UAEX"
 )

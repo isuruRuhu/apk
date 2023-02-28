@@ -119,7 +119,7 @@ public distinct class URITemplate {
     # The function that maps to the `getScopes` method of `org.wso2.apk.runtime.model.URITemplate`.
     #
     # + return - The `javautil:List` value returning from the Java mapping.
-    public function getScopes() returns javautil:List {
+    public isolated function getScopes() returns javautil:List {
         handle externalObj = org_wso2_apk_runtime_model_URITemplate_getScopes(self.jObj);
         javautil:List newObj = new (externalObj);
         return newObj;
@@ -252,7 +252,7 @@ public distinct class URITemplate {
     # The function that maps to the `setScopes` method of `org.wso2.apk.runtime.model.URITemplate`.
     #
     # + arg0 - The `Scope` value required to map with the Java method parameter.
-    public function setScopes(Scope arg0) {
+    public isolated function setScopes(Scope arg0) {
         org_wso2_apk_runtime_model_URITemplate_setScopes(self.jObj, arg0.jObj);
     }
 
@@ -389,7 +389,7 @@ function org_wso2_apk_runtime_model_URITemplate_getScope(handle receiver) return
     paramTypes: []
 } external;
 
-function org_wso2_apk_runtime_model_URITemplate_getScopes(handle receiver) returns handle = @java:Method {
+isolated function org_wso2_apk_runtime_model_URITemplate_getScopes(handle receiver) returns handle = @java:Method {
     name: "getScopes",
     'class: "org.wso2.apk.runtime.model.URITemplate",
     paramTypes: []
@@ -503,7 +503,7 @@ function org_wso2_apk_runtime_model_URITemplate_setScope(handle receiver, handle
     paramTypes: ["org.wso2.apk.runtime.model.Scope"]
 } external;
 
-function org_wso2_apk_runtime_model_URITemplate_setScopes(handle receiver, handle arg0) = @java:Method {
+isolated function org_wso2_apk_runtime_model_URITemplate_setScopes(handle receiver, handle arg0) = @java:Method {
     name: "setScopes",
     'class: "org.wso2.apk.runtime.model.URITemplate",
     paramTypes: ["org.wso2.apk.runtime.model.Scope"]

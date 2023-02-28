@@ -50,15 +50,14 @@ public class RequestContext {
     private String clientCertificate;
     // Denotes the cluster header name for each environment. Both properties can be null if
     // the openAPI has production endpoints alone.
-    private String prodClusterHeader;
-    private String sandClusterHeader;
+    private String clusterHeader;
     //Denotes the specific headers which needs to be passed to response object
     private Map<String, String> addHeaders;
     private Map<String, String> metadataMap = new HashMap<>();
     private String requestPathTemplate;
     private ArrayList<String> removeHeaders;
     // Consist of web socket frame related data like frame length, remote IP
-    private WebSocketFrameContext webSocketFrameContext;
+//    private WebSocketFrameContext webSocketFrameContext;
     private Map<String, String> queryParameters;
     private Map<String, String> pathParameters;
     private ArrayList<String> queryParamsToRemove;
@@ -265,20 +264,8 @@ public class RequestContext {
      *
      * @return prod Cluster name header value
      */
-    public String getProdClusterHeader() {
-        return prodClusterHeader;
-    }
-
-    /**
-     * Returns the sandbox cluster header value.
-     * can be null if the openAPI has production endpoints alone.
-     * In that case, no header should not be set.
-     * If this property is null and the keytype is sand box, the request should be blocked
-     *
-     * @return sand Cluster name header value
-     */
-    public String getSandClusterHeader() {
-        return sandClusterHeader;
+    public String getClusterHeader() {
+        return clusterHeader;
     }
 
     /**
@@ -322,21 +309,21 @@ public class RequestContext {
     public Map<String, String> getQueryParameters() {
         return queryParameters;
     }
-
-    /**
-     * This is used for websocket specific implementation.
-     * When the websocket communication happens, there is a specific filter which sends some metadata
-     * related to the websocket frames for throttling and analytics purposes. This publishing happens
-     * asynchronously.
-     * <p>
-     * Note:
-     * This can't be used for modifying/reading websocket frame data.
-     *
-     * @return {@code WebSocketFrameContext} object
-     */
-    public WebSocketFrameContext getWebSocketFrameContext() {
-        return webSocketFrameContext;
-    }
+//
+//    /**
+//     * This is used for websocket specific implementation.
+//     * When the websocket communication happens, there is a specific filter which sends some metadata
+//     * related to the websocket frames for throttling and analytics purposes. This publishing happens
+//     * asynchronously.
+//     * <p>
+//     * Note:
+//     * This can't be used for modifying/reading websocket frame data.
+//     *
+//     * @return {@code WebSocketFrameContext} object
+//     */
+//    public WebSocketFrameContext getWebSocketFrameContext() {
+//        return webSocketFrameContext;
+//    }
 
     /**
      * If there is a set of query parameters needs to be removed from the outbound request, those parameters should
@@ -403,8 +390,7 @@ public class RequestContext {
         private String requestPathTemplate;
         private ArrayList<ResourceConfig> matchedResourceConfigs;
         private Map<String, String> headers;
-        private String prodClusterHeader;
-        private String sandClusterHeader;
+        private String clusterHeader;
         private long requestTimeStamp;
         private Map<String, Object> properties = new HashMap<>();
         private AuthenticationContext authenticationContext = new AuthenticationContext();
@@ -438,16 +424,9 @@ public class RequestContext {
             return this;
         }
 
-        public Builder prodClusterHeader(String cluster) {
+        public Builder clusterHeader(String cluster) {
             if (!StringUtils.isEmpty(cluster)) {
-                this.prodClusterHeader = cluster;
-            }
-            return this;
-        }
-
-        public Builder sandClusterHeader(String cluster) {
-            if (!StringUtils.isEmpty(cluster)) {
-                this.sandClusterHeader = cluster;
+                this.clusterHeader = cluster;
             }
             return this;
         }
@@ -494,8 +473,7 @@ public class RequestContext {
             requestContext.requestMethod = this.requestMethod;
             requestContext.requestPath = this.requestPath;
             requestContext.headers = this.headers;
-            requestContext.prodClusterHeader = this.prodClusterHeader;
-            requestContext.sandClusterHeader = this.sandClusterHeader;
+            requestContext.clusterHeader = this.clusterHeader;
             requestContext.properties = this.properties;
             requestContext.requestPathTemplate = this.requestPathTemplate;
             requestContext.requestTimeStamp = this.requestTimeStamp;
@@ -522,9 +500,9 @@ public class RequestContext {
             requestContext.pathParameters = populatePathParameters(
                     matchedAPI.getBasePath(), requestPathTemplate, this.requestPath);
 
-            if (this.webSocketFrameContext != null) {
-                requestContext.webSocketFrameContext = this.webSocketFrameContext;
-            }
+//            if (this.webSocketFrameContext != null) {
+//                requestContext.webSocketFrameContext = this.webSocketFrameContext;
+//            }
             return requestContext;
         }
 

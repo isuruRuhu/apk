@@ -21,7 +21,7 @@ import ballerina/log;
 
 configurable int BACKOFFICE_PORT = 9443;
 
-listener http:Listener ep0 = new (BACKOFFICE_PORT);
+listener http:Listener ep0 = new (BACKOFFICE_PORT, {interceptors: [jwtValidationInterceptor,requestErrorInterceptor]});
 
 @http:ServiceConfig {
     cors: {
@@ -36,7 +36,7 @@ listener http:Listener ep0 = new (BACKOFFICE_PORT);
 service /api/am/backoffice on ep0 {
     
     isolated resource function get apis(string? query, @http:Header string? 'if\-none\-match, int 'limit = 25, int offset = 0, string sortBy = "createdTime", string sortOrder = "desc", @http:Header string? accept = "application/json") returns APIList|http:NotModified|NotAcceptableError|InternalServerErrorError|BadRequestError {
-        APIList|APKError apiList = getAPIList(); 
+        APIList|APKError apiList = getAPIList('limit, offset, query, "carbon.super");
         if apiList is APIList {
             return apiList;
         } else {
@@ -165,6 +165,15 @@ service /api/am/backoffice on ep0 {
                 return currentState;
         } else {
              return error("Error while getting LC state of API" + currentState.message());
+        }
+    }
+    resource function get 'business\-plans(@http:Header string? accept = "application/json") returns BusinessPlanList|InternalServerErrorError|BadRequestError {
+        BusinessPlanList|APKError subPolicyList = getBusinessPlans();
+        if subPolicyList is BusinessPlanList {
+            log:printDebug(subPolicyList.toString());
+            return subPolicyList;
+        } else {
+            return handleAPKError(subPolicyList);
         }
     }
 }

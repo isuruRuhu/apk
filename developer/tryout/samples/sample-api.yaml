@@ -25,7 +25,7 @@ spec:
   definitionFileRef: swagger-definition-http-bin-api
   prodHTTPRouteRef: prod-http-route-http-bin-api
   sandHTTPRouteRef: sand-http-route-http-bin-api
-  organization: carbon.super
+  organization: 01edb285-6304-1b20-a090-4d02067ed56e
 ---
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
@@ -33,11 +33,11 @@ metadata:
   name: prod-http-route-http-bin-api
 spec:
   hostnames:
-  - prod.gw.wso2.com
+    - prod.gw.wso2.com
   parentRefs:
-  - group: gateway.networking.k8s.io
-    kind: Gateway
-    name: Default
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: Default
   rules:
   - backendRefs:
     - group: ""
@@ -55,29 +55,16 @@ spec:
           path:
             type: ReplacePrefixMatch
             replacePrefixMatch: /get
----
-apiVersion: gateway.networking.k8s.io/v1beta1
-kind: HTTPRoute
-metadata:
-  name: sand-http-route-http-bin-api
-spec:
-  hostnames:
-  - sand.gw.wso2.com
-  parentRefs:
-  - group: gateway.networking.k8s.io
-    kind: Gateway
-    name: Default
-  rules:
   - backendRefs:
     - group: ""
       kind: Service
-      name: backend
-      port: 80
+      name: secure-backend
+      port: 443
       weight: 1
     matches:
     - path:
         type: PathPrefix
-        value: /http-bin-api/1.0.8/get
+        value: /http-bin-api/1.0.8/secure/get/
     filters:
       - type: URLRewrite
         urlRewrite:
@@ -87,5 +74,62 @@ spec:
       - type: ExtensionRef
         extensionRef:
           group: dp.wso2.com
-          kind: Authentication
-          name: sand-http-bin-authentication
+          kind: Scope
+          name: pet
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: sand-http-route-http-bin-api
+spec:
+  hostnames:
+    - sand.gw.wso2.com
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: Default
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: backend
+          port: 80
+          weight: 1
+      matches:
+        - path:
+            type: PathPrefix
+            value: /http-bin-api/1.0.8/get
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /get
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            add:
+              - name: custom-response-header
+                value: myvalue
+            remove:
+              - access-control-allow-credentials
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            add:
+              - name: custom-request-header
+                value: myvalue
+            set:
+              - name: custom-override-header
+                value: myvalue
+        - type: ExtensionRef
+          extensionRef:
+            group: dp.wso2.com
+            kind: Authentication
+            name: sand-http-bin-authentication
+---
+apiVersion: dp.wso2.com/v1alpha1
+kind: Scope
+metadata:
+  name: pet
+spec:
+  names:
+    - read:pets

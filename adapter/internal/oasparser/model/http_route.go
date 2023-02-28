@@ -24,26 +24,47 @@ import (
 	"github.com/google/uuid"
 	"github.com/wso2/apk/adapter/internal/loggers"
 	"github.com/wso2/apk/adapter/internal/oasparser/constants"
-	dpv1alpha1 "github.com/wso2/apk/adapter/internal/operator/apis/dp/v1alpha1"
-	"github.com/wso2/apk/adapter/internal/operator/utils"
+	dpv1alpha1 "github.com/wso2/apk/adapter/pkg/operator/apis/dp/v1alpha1"
+	"github.com/wso2/apk/adapter/pkg/operator/utils"
 	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/types"
 	gwapiv1b1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
+// HTTPRouteParams contains httproute related parameters
+type HTTPRouteParams struct {
+	AuthSchemes            map[string]dpv1alpha1.Authentication
+	ResourceAuthSchemes    map[string]dpv1alpha1.Authentication
+	APIPolicies            map[string]dpv1alpha1.APIPolicy
+	ResourceAPIPolicies    map[string]dpv1alpha1.APIPolicy
+	BackendPropertyMapping dpv1alpha1.BackendPropertyMapping
+	ResourceScopes         map[string]dpv1alpha1.Scope
+}
+
 // SetInfoHTTPRouteCR populates resources and endpoints of mgwSwagger. httpRoute.Spec.Rules.Matches
 // are used to create resources and httpRoute.Spec.Rules.BackendRefs are used to create EndpointClusters.
-func (swagger *MgwSwagger) SetInfoHTTPRouteCR(httpRoute *gwapiv1b1.HTTPRoute, authSchemes map[string]dpv1alpha1.Authentication,
-	resourceAuthSchemes map[string]dpv1alpha1.Authentication, backendPropertyMapping dpv1alpha1.BackendPropertyMapping, isProd bool) error {
+func (swagger *MgwSwagger) SetInfoHTTPRouteCR(httpRoute *gwapiv1b1.HTTPRoute, httpRouteParams HTTPRouteParams) error {
 	var resources []*Resource
 	var securitySchemes []SecurityScheme
 	//TODO(amali) add gateway level securities after gateway crd has implemented
-	authScheme := selectAuthScheme(maps.Values(authSchemes))
+	outputAuthScheme := utils.TieBreaker(utils.GetPtrSlice(maps.Values(httpRouteParams.AuthSchemes)))
+	outputAPIPolicy := utils.TieBreaker(utils.GetPtrSlice(maps.Values(httpRouteParams.APIPolicies)))
+
+	var authScheme *dpv1alpha1.Authentication
+	if outputAuthScheme != nil {
+		authScheme = *outputAuthScheme
+	}
+	var apiPolicy *dpv1alpha1.APIPolicy
+	if outputAPIPolicy != nil {
+		apiPolicy = *outputAPIPolicy
+	}
 	for _, rule := range httpRoute.Spec.Rules {
 		var endPoints []Endpoint
 		var policies = OperationPolicies{}
 		resourceAuthScheme := authScheme
+		resourceAPIPolicy := apiPolicy
 		hasPolicies := false
+		var scopes []string
 		for _, filter := range rule.Filters {
 			hasPolicies = true
 			switch filter.Type {
@@ -66,10 +87,35 @@ func (swagger *MgwSwagger) SetInfoHTTPRouteCR(httpRoute *gwapiv1b1.HTTPRoute, au
 				})
 			case gwapiv1b1.HTTPRouteFilterExtensionRef:
 				if filter.ExtensionRef.Kind == constants.KindAuthentication {
-					if ref, found := resourceAuthSchemes[string(filter.ExtensionRef.Name)]; found {
+					if ref, found := httpRouteParams.ResourceAuthSchemes[types.NamespacedName{
+						Name:      string(filter.ExtensionRef.Name),
+						Namespace: httpRoute.Namespace,
+					}.String()]; found {
 						resourceAuthScheme = concatAuthSchemes(authScheme, &ref)
 					} else {
-						return fmt.Errorf("auth scheme : %s has not been resolved", filter.ExtensionRef.Name)
+						return fmt.Errorf(`auth scheme: %s has not been resolved, spec.targetRef.kind should be 
+						'Resource' in resource level Authentications`, filter.ExtensionRef.Name)
+					}
+				}
+				if filter.ExtensionRef.Kind == constants.KindAPIPolicy {
+					if ref, found := httpRouteParams.ResourceAPIPolicies[types.NamespacedName{
+						Name:      string(filter.ExtensionRef.Name),
+						Namespace: httpRoute.Namespace,
+					}.String()]; found {
+						resourceAPIPolicy = concatAPIPolicies(resourceAPIPolicy, &ref)
+					} else {
+						return fmt.Errorf(`apipolicy: %s has not been resolved, spec.targetRef.kind should be 
+						'Resource' in resource level APIPolicies`, filter.ExtensionRef.Name)
+					}
+				}
+				if filter.ExtensionRef.Kind == constants.KindScope {
+					if ref, found := httpRouteParams.ResourceScopes[types.NamespacedName{
+						Name:      string(filter.ExtensionRef.Name),
+						Namespace: httpRoute.Namespace,
+					}.String()]; found {
+						scopes = append(scopes, ref.Spec.Names...)
+					} else {
+						return fmt.Errorf("scope: %s has not been resolved in namespace %s", filter.ExtensionRef.Name, httpRoute.Namespace)
 					}
 				}
 			case gwapiv1b1.HTTPRouteFilterRequestHeaderModifier:
@@ -105,22 +151,58 @@ func (swagger *MgwSwagger) SetInfoHTTPRouteCR(httpRoute *gwapiv1b1.HTTPRoute, au
 						Parameters: policyParameters,
 					})
 				}
+			case gwapiv1b1.HTTPRouteFilterResponseHeaderModifier:
+				for _, header := range filter.ResponseHeaderModifier.Add {
+					policyParameters := make(map[string]interface{})
+					policyParameters[constants.HeaderName] = string(header.Name)
+					policyParameters[constants.HeaderValue] = string(header.Value)
+
+					policies.Response = append(policies.Response, Policy{
+						PolicyName: string(gwapiv1b1.HTTPRouteFilterResponseHeaderModifier),
+						Action:     constants.ActionHeaderAdd,
+						Parameters: policyParameters,
+					})
+				}
+				for _, header := range filter.ResponseHeaderModifier.Remove {
+					policyParameters := make(map[string]interface{})
+					policyParameters[constants.HeaderName] = string(header)
+
+					policies.Response = append(policies.Response, Policy{
+						PolicyName: string(gwapiv1b1.HTTPRouteFilterResponseHeaderModifier),
+						Action:     constants.ActionHeaderRemove,
+						Parameters: policyParameters,
+					})
+				}
+				for _, header := range filter.ResponseHeaderModifier.Set {
+					policyParameters := make(map[string]interface{})
+					policyParameters[constants.HeaderName] = string(header.Name)
+					policyParameters[constants.HeaderValue] = string(header.Value)
+
+					policies.Response = append(policies.Response, Policy{
+						PolicyName: string(gwapiv1b1.HTTPRouteFilterResponseHeaderModifier),
+						Action:     constants.ActionHeaderAdd,
+						Parameters: policyParameters,
+					})
+				}
 			}
 		}
 		loggers.LoggerOasparser.Debug("Calculating auths for API ...")
-		securities, securityDefinitions, disabledSecurity := getSecurity(concatAuthScheme(resourceAuthScheme))
+		securities, securityDefinitions, disabledSecurity := getSecurity(concatAuthScheme(resourceAuthScheme), scopes)
 		securitySchemes = append(securitySchemes, securityDefinitions...)
 		if len(rule.BackendRefs) < 1 {
 			return fmt.Errorf("no backendref were provided")
 		}
 		for _, backend := range rule.BackendRefs {
+			backendProperties := httpRouteParams.BackendPropertyMapping[types.NamespacedName{
+				Name:      string(backend.Name),
+				Namespace: utils.GetNamespace(backend.Namespace, httpRoute.Namespace),
+			}]
 			endPoints = append(endPoints,
-				Endpoint{Host: backendPropertyMapping[types.NamespacedName{
-					Name:      string(backend.Name),
-					Namespace: utils.GetNamespace(backend.Namespace, httpRoute.Namespace),
-				}].ResolvedHostname,
-					URLType: constants.HTTP,
-					Port:    uint32(*backend.Port)})
+				Endpoint{Host: backendProperties.ResolvedHostname,
+					URLType:     string(backendProperties.Protocol),
+					Port:        uint32(*backend.Port),
+					Certificate: []byte(backendProperties.TLS.CertificateInline),
+				})
 		}
 
 		for _, match := range rule.Matches {
@@ -129,22 +211,14 @@ func (swagger *MgwSwagger) SetInfoHTTPRouteCR(httpRoute *gwapiv1b1.HTTPRoute, au
 				methods:       getAllowedOperations(match.Method, policies, resourceAuthScheme, securities, disabledSecurity),
 				pathMatchType: *match.Path.Type,
 				hasPolicies:   hasPolicies,
+				iD:            uuid.New().String(),
 			}
-			if isProd {
-				resource.productionEndpoints = &EndpointCluster{
-					EndpointPrefix: constants.ProdClustersConfigNamePrefix,
-					Endpoints:      endPoints,
-				}
-			} else {
-				resource.sandboxEndpoints = &EndpointCluster{
-					EndpointPrefix: constants.SandClustersConfigNamePrefix,
-					Endpoints:      endPoints,
-				}
+			resource.endpoints = &EndpointCluster{
+				Endpoints: endPoints,
 			}
 			resources = append(resources, resource)
 		}
 	}
-
 	swagger.resources = resources
 	swagger.securityScheme = securitySchemes
 	return nil
@@ -245,27 +319,69 @@ func concatAuthScheme(scheme *dpv1alpha1.Authentication) *dpv1alpha1.Authenticat
 	return &finalAuth
 }
 
-func selectAuthScheme(authSchemes []dpv1alpha1.Authentication) *dpv1alpha1.Authentication {
-	if len(authSchemes) < 1 {
+// concatAPIPolicies concatinate override and default authentication rules to a one authentication override rule
+// folowing the hierarchy described in the https://gateway-api.sigs.k8s.io/references/policy-attachment/#hierarchy
+// Following code would follow below logic.
+// | API override policies | Resource override policies | Resource default policies | API default policies |
+// |            1          |              1             |              0            |           0          | API override policies
+// |            1          |              0             |              1            |           0          | API override policies
+// |            0          |              1             |              0            |           1          | Resource override policies
+// |            0          |              0             |              1            |           1          | Resource default policies
+func concatAPIPolicies(schemeUp *dpv1alpha1.APIPolicy, schemeDown *dpv1alpha1.APIPolicy) *dpv1alpha1.APIPolicy {
+	if schemeUp == nil && schemeDown == nil {
 		return nil
+	} else if schemeUp == nil {
+		return schemeDown
+	} else if schemeDown == nil {
+		return schemeUp
 	}
-	selectedAuth := &authSchemes[0]
-	// According to https://gateway-api.sigs.k8s.io/geps/gep-713/?h=multiple+targetrefs#conflict-resolution
-	for _, authScheme := range authSchemes[1:] {
-		if selectedAuth.CreationTimestamp.After(authScheme.CreationTimestamp.Time) {
-			selectedAuth = &authScheme
-		} else if selectedAuth.CreationTimestamp.String() == authScheme.CreationTimestamp.Time.String() &&
-			utils.NamespacedName(selectedAuth).String() > utils.NamespacedName(&authScheme).String() {
-			selectedAuth = &authScheme
-		}
+
+	finalAPIPolicy := dpv1alpha1.APIPolicy{}
+
+	// api level override policies - must apply
+	finalAPIPolicy.Spec.Override.RequestQueryModifier = schemeUp.Spec.Override.RequestQueryModifier
+
+	// resource level override policies - must apply
+	// api level override RequestQueryModifier.Add/remove + resource level override RequestQueryModifier.Add/remove
+	if len(finalAPIPolicy.Spec.Override.RequestQueryModifier.Add) < 1 {
+		finalAPIPolicy.Spec.Override.RequestQueryModifier.Add = schemeDown.Spec.Override.RequestQueryModifier.Add
 	}
-	return selectedAuth
+	if len(finalAPIPolicy.Spec.Override.RequestQueryModifier.Remove) < 1 {
+		finalAPIPolicy.Spec.Override.RequestQueryModifier.Remove = schemeDown.Spec.Override.RequestQueryModifier.Remove
+	}
+	if finalAPIPolicy.Spec.Override.RequestQueryModifier.RemoveAll == "" {
+		finalAPIPolicy.Spec.Override.RequestQueryModifier.RemoveAll = schemeDown.Spec.Override.RequestQueryModifier.RemoveAll
+	}
+
+	// resource level default policies if above are empty
+	if len(finalAPIPolicy.Spec.Override.RequestQueryModifier.Add) < 1 {
+		finalAPIPolicy.Spec.Override.RequestQueryModifier.Add = schemeDown.Spec.Default.RequestQueryModifier.Add
+	}
+	if len(finalAPIPolicy.Spec.Override.RequestQueryModifier.Remove) < 1 {
+		finalAPIPolicy.Spec.Override.RequestQueryModifier.Remove = schemeDown.Spec.Default.RequestQueryModifier.Remove
+	}
+	if finalAPIPolicy.Spec.Override.RequestQueryModifier.RemoveAll == "" {
+		finalAPIPolicy.Spec.Override.RequestQueryModifier.RemoveAll = schemeDown.Spec.Default.RequestQueryModifier.RemoveAll
+	}
+
+	// API level default policies if above are empty
+	if len(finalAPIPolicy.Spec.Override.RequestQueryModifier.Add) < 1 {
+		finalAPIPolicy.Spec.Override.RequestQueryModifier.Add = schemeUp.Spec.Default.RequestQueryModifier.Add
+	}
+	if len(finalAPIPolicy.Spec.Override.RequestQueryModifier.Remove) < 1 {
+		finalAPIPolicy.Spec.Override.RequestQueryModifier.Remove = schemeUp.Spec.Default.RequestQueryModifier.Remove
+	}
+	if finalAPIPolicy.Spec.Override.RequestQueryModifier.RemoveAll == "" {
+		finalAPIPolicy.Spec.Override.RequestQueryModifier.RemoveAll = schemeUp.Spec.Default.RequestQueryModifier.RemoveAll
+	}
+
+	return &finalAPIPolicy
 }
 
 // getSecurity returns security schemes and it's definitions with flag to indicate if security is disabled
 // make sure authscheme only has external service override values. (i.e. empty default values)
 // tip: use concatScheme method
-func getSecurity(authScheme *dpv1alpha1.Authentication) ([]map[string][]string, []SecurityScheme, bool) {
+func getSecurity(authScheme *dpv1alpha1.Authentication, scopes []string) ([]map[string][]string, []SecurityScheme, bool) {
 	authSecurities := []map[string][]string{}
 	securitySchemes := []SecurityScheme{}
 	if authScheme != nil {
@@ -277,12 +393,17 @@ func getSecurity(authScheme *dpv1alpha1.Authentication) ([]map[string][]string, 
 			switch auth.AuthType {
 			case constants.JWTAuth:
 				securityName := fmt.Sprintf("%s_%v", constants.JWTAuth, rand.Intn(999999999))
-				authSecurities = append(authSecurities, map[string][]string{securityName: {}})
+				authSecurities = append(authSecurities, map[string][]string{securityName: scopes})
 				securitySchemes = append(securitySchemes, SecurityScheme{DefinitionName: securityName, Type: constants.Oauth2TypeInOAS})
 			}
 		}
 	} else {
 		loggers.LoggerOasparser.Debug("No auths were provided")
+		//todo(amali) remove this default security after scope remodelling is done.
+		// apply default security
+		securityName := fmt.Sprintf("%s_%v", constants.JWTAuth, rand.Intn(999999999))
+		authSecurities = append(authSecurities, map[string][]string{securityName: scopes})
+		securitySchemes = append(securitySchemes, SecurityScheme{DefinitionName: securityName, Type: constants.Oauth2TypeInOAS})
 	}
 	return authSecurities, securitySchemes, false
 }

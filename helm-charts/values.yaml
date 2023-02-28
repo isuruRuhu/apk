@@ -20,6 +20,17 @@ wso2:
       enabled: true
       serviceAccountName: wso2apk-platform
       roleName: wso2apk-role
+    idp:
+      issuer: "https://idp.am.wso2.com/token"
+      authorizeEndpoint: "https://idp.am.wso2.com:9095/oauth2/authorize"
+      tokenEndpoint: "https://idp.am.wso2.com:9095/oauth2/token"
+      revokeEndpoint: "https://idp.am.wso2.com:9095/oauth2/revoke"
+      #jwksEndpoint: ""      
+      usernameClaim: "sub"
+      groupClaim: "groups"
+      organizationClaim: "organization"
+      clientId: "45f1c5c8-a92e-11ed-afa1-0242ac120002"
+      clientSecret: "4fbd62ec-a92e-11ed-afa1-0242ac120002"
     cp:
       enabled: true
       database:
@@ -33,8 +44,6 @@ wso2:
         password: "wso2carbon"
         validationQuery: "SELECT 1"
         validationTimeout: 250
-      ipk:
-        enabled: false
       devportal:
         appName: "devportal-ds"
         deployment:
@@ -60,16 +69,8 @@ wso2:
             failureThreshold: 5
           strategy: Recreate
           replicas: 1
-          imagePullPolicy: IfNotPresent
-          image: wso2/devportal-domain-service:0.0.1-m3
-        ingress:
-          path: /api/am/devportal
-          className: ""
-          annotations:
-            kubernetes.io/ingress.class: "nginx"
-            nginx.ingress.kubernetes.io/affinity: "cookie"
-            nginx.ingress.kubernetes.io/session-cookie-name: "route"
-            nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+          imagePullPolicy: Always
+          image: wso2/devportal-domain-service:0.0.1-m5
       admin:
         appName: "admin-ds"
         deployment:
@@ -95,16 +96,8 @@ wso2:
             failureThreshold: 5
           strategy: Recreate
           replicas: 1
-          imagePullPolicy: IfNotPresent
-          image: wso2/admin-domain-service:0.0.1-m3
-        ingress:
-          path: /api/am/admin
-          className: ""
-          annotations:
-            kubernetes.io/ingress.class: "nginx"
-            nginx.ingress.kubernetes.io/affinity: "cookie"
-            nginx.ingress.kubernetes.io/session-cookie-name: "route"
-            nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+          imagePullPolicy: Always
+          image: wso2/admin-domain-service:0.0.1-m5
       backoffice:
         appName: "backoffice-ds"
         deployment:
@@ -130,16 +123,8 @@ wso2:
             failureThreshold: 5
           strategy: Recreate
           replicas: 1
-          imagePullPolicy: IfNotPresent
-          image: wso2/backoffice-domain-service:0.0.1-m3
-        ingress:
-          path: /api/am/backoffice
-          className: ""
-          annotations:
-            kubernetes.io/ingress.class: "nginx"
-            nginx.ingress.kubernetes.io/affinity: "cookie"
-            nginx.ingress.kubernetes.io/session-cookie-name: "route"
-            nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+          imagePullPolicy: Always
+          image: wso2/backoffice-domain-service:0.0.1-m5
       devportalUI:
         appName: "devportal-ui"
         deployment:
@@ -168,16 +153,6 @@ wso2:
           imagePullPolicy: IfNotPresent
           # TODO update image
           image: chanaka3d/portals:linux1.0.0
-        ingress:
-          path: /
-          host: portal.ui.wso2
-          className: ""
-          annotations:
-            kubernetes.io/ingress.class: "nginx"
-            nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-            nginx.ingress.kubernetes.io/affinity: "cookie"
-            nginx.ingress.kubernetes.io/session-cookie-name: "route"
-            nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
       managementServer:
         appName: "management-server"
         deployment:
@@ -191,8 +166,8 @@ wso2:
               cpu: "1000m"
           strategy: Recreate
           replicas: 1
-          imagePullPolicy: IfNotPresent
-          image: wso2/management-server:0.0.1-m3
+          imagePullPolicy: Always
+          image: wso2/management-server:0.0.1-m5
       cnpg:
         npi: cnpg-npi
         instances: 1
@@ -226,16 +201,8 @@ wso2:
             failureThreshold: 5
           strategy: Recreate
           replicas: 1
-          imagePullPolicy: IfNotPresent
-          image: wso2/runtime-domain-service:0.0.1-m3
-        ingress:
-          path: /api/am/runtime
-          className: ""
-          annotations:
-            kubernetes.io/ingress.class: "nginx"
-            nginx.ingress.kubernetes.io/affinity: "cookie"
-            nginx.ingress.kubernetes.io/session-cookie-name: "route"
-            nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
+          imagePullPolicy: Always
+          image: wso2/runtime-domain-service:0.0.1-m5
       adapter:
         appName: "adapter"
         deployment:
@@ -266,8 +233,8 @@ wso2:
             failureThreshold: 5
           strategy: Recreate
           replicas: 1
-          imagePullPolicy: IfNotPresent
-          image: wso2/adapter:0.0.1-m3
+          imagePullPolicy: Always
+          image: wso2/adapter:0.0.1-m5
           security:
             sslHostname: "adapter"
       gatewayRuntime:
@@ -309,8 +276,8 @@ wso2:
               periodSeconds: 20
               failureThreshold: 5
             strategy: Recreate
-            imagePullPolicy: IfNotPresent
-            image: wso2/router:0.0.1-m3
+            imagePullPolicy: Always
+            image: wso2/router:0.0.1-m5
           enforcer:
             npi: enforcer-npi
             resources:
@@ -348,8 +315,8 @@ wso2:
               periodSeconds: 20
               failureThreshold: 5
             strategy: Recreate
-            imagePullPolicy: IfNotPresent
-            image: wso2/enforcer:0.0.1-m3
+            imagePullPolicy: Always
+            image: wso2/enforcer:0.0.1-m5
             security:
               sslHostname: "enforcer"
 
@@ -373,9 +340,80 @@ postgresql:
   image:
     debug: true
 
-ipk:
-  wso2:
+idp:
+  enabled: true
+  database:
+    enabled: true
+    driver: "org.postgresql.Driver"
+    url: "jdbc:postgresql://wso2apk-db-service:5432/WSO2AM_DB"
+    host: "wso2apk-db-service"
+    port: 5432
+    databaseName: "WSO2AM_DB"
+    username: "wso2carbon"
+    password: "wso2carbon"
+    validationQuery: "SELECT 1"
+    validationTimeout: 250
+  idpds:
+    config:
+      issuer: "https://idp.am.wso2.com/token"
+      keyId: "gateway_certificate_alias"
+      hostname: "idp.am.wso2.com"
+      loginPageURl: "https://idp.am.wso2.com:9095/authenticationEndpoint/login"
+      loginErrorPageUrl: "https://idp.am.wso2.com:9095/authenticationEndpoint/error"
+      loginCallBackURl: "https://idp.am.wso2.com:9095/authenticationEndpoint/login-callback"
+    appName: "idp-ds"
     deployment:
-      wso2is:
-        replicas: 0
-        imagePullPolicy: IfNotPresent
+      npi: idp-ds-npi
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1028Mi"
+          cpu: "1000m"
+      readinessProbe:
+        path: /health
+        port: 9443
+        initialDelaySeconds: 20
+        periodSeconds: 20
+        failureThreshold: 5
+      livenessProbe:
+        path: /health
+        port: 9443
+        initialDelaySeconds: 20
+        periodSeconds: 20
+        failureThreshold: 5
+      strategy: Recreate
+      replicas: 1
+      imagePullPolicy: Always
+      image: wso2/idp-domain-service:0.0.1-m5
+  idpui:
+    appName: "idp-ui"
+    deployment:
+      npi: idp-ui-npi
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1028Mi"
+          cpu: "1000m"
+      readinessProbe:
+        path: /authenticationEndpoint/health
+        port: 9443
+        initialDelaySeconds: 20
+        periodSeconds: 20
+        failureThreshold: 5
+      livenessProbe:
+        path: /authenticationEndpoint/health
+        port: 9443
+        initialDelaySeconds: 20
+        periodSeconds: 20
+        failureThreshold: 5
+      strategy: Recreate
+      replicas: 1
+      imagePullPolicy: Always
+      image: wso2/idp-ui:0.0.1-m5
+    configs:
+      idpLoginUrl: "https://idp.am.wso2.com:9095/commonauth/login"
+      idpAuthCallBackUrl: "https://idp.am.wso2.com:9095/oauth2/auth-callback"
